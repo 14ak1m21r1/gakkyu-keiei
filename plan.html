@@ -382,6 +382,7 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
   <button class="tb-btn blue"   id="btn-save">保存</button>
   <button class="tb-btn green"  id="btn-load">読み込み</button>
   <button class="tb-btn green"  id="btn-load-excel" style="background:#38a169">Excelインポート</button>
+  <button class="tb-btn blue" id="btn-export-excel" style="background:#2b6cb0">Excelテンプレート</button>
   <button class="tb-btn orange" id="btn-pdf" onclick="window.print()">PDF出力</button>
   <span class="tb-note">※ 印刷ダイアログで「PDFとして保存」</span>
 </div>
@@ -1273,6 +1274,97 @@ document.getElementById('btn-load').addEventListener('click',()=>{
     reader.readAsText(file);
   });
   input.click();
+});
+
+// ================================================================
+//  Excel Export (テンプレートダウンロード)
+// ================================================================
+document.getElementById('btn-export-excel').addEventListener('click',()=>{
+  if(typeof XLSX === 'undefined'){
+    alert('Excelライブラリの読み込みに失敗しました。インターネット接続を確認してください。');
+    return;
+  }
+  const subjects = getSubjects();
+  const grade = state.grade;
+
+  // ワークブック・シート作成
+  const wb = XLSX.utils.book_new();
+  const wsData = [];
+
+  // Row 1: タイトル
+  const titleRow = [`令和7年度　第${grade}学年　年間単元指導計画表`];
+  for(let i=0; i<subjects.length; i++) titleRow.push('');
+  wsData.push(titleRow);
+
+  // Row 2: ヘッダー
+  wsData.push(['月', ...subjects]);
+
+  // Rows 3+: 月データ（テキスト行 + 時数行）
+  for(const m of MONTHS){
+    const textRow = [monthLabel(m)];
+    const hourRow = [''];
+    for(const subj of subjects){
+      const k = cellKey(subj, m);
+      const units = state.units[k] || [];
+      // テキスト行: 「単元名(時数)」を改行区切りで結合
+      const text = units.map(u => u.hours > 0 ? `${u.unit}(${u.hours})` : u.unit).join('\n');
+      textRow.push(text);
+      // 時数行: 合計時数
+      const totalHours = units.reduce((s,u) => s + (u.hours||0), 0);
+      hourRow.push(totalHours);
+    }
+    wsData.push(textRow);
+    wsData.push(hourRow);
+  }
+
+  // 年間合計行
+  const totalRow = ['年間合計'];
+  for(let si=0; si<subjects.length; si++){
+    const colLetter = XLSX.utils.encode_col(si + 1);
+    // SUM of hours rows (rows 4,6,8,...,26 = 0-indexed rows 3,5,7,...,25)
+    const refs = [];
+    for(let i=0; i<12; i++) refs.push(`${colLetter}${4 + i*2}`);
+    totalRow.push({f: `SUM(${refs.join(',')})`});
+  }
+  wsData.push(totalRow);
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // タイトル行のマージ
+  ws['!merges'] = [{s:{r:0,c:0}, e:{r:0,c:subjects.length}}];
+
+  // 列幅設定
+  const colWidths = [{wch:5}]; // 月列
+  const WIDE = {'国語':24,'算数':20,'社会':20,'理科':18,'道徳・特活':20};
+  for(const subj of subjects){
+    colWidths.push({wch: WIDE[subj] || 16});
+  }
+  ws['!cols'] = colWidths;
+
+  // 行の高さ設定 & 時数行を非表示
+  const rowProps = [];
+  rowProps.push({hpt:30});  // Row 1: タイトル
+  rowProps.push({hpt:26});  // Row 2: ヘッダー
+  for(let i=0; i<12; i++){
+    rowProps.push({hpt:50});       // テキスト行
+    rowProps.push({hidden:true});  // 時数行（非表示）
+  }
+  rowProps.push({hpt:24}); // 合計行
+  ws['!rows'] = rowProps;
+
+  XLSX.utils.book_append_sheet(wb, ws, `${grade}年年間単元指導計画`);
+
+  // ダウンロード
+  const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  const blob = new Blob([wbout], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${grade}年_年間単元指導計画表.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 });
 
 // ================================================================
