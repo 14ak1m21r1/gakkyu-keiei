@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>年間単元指導計画表</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 /* ============================================================
    Reset & Base
@@ -380,6 +381,7 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
   <div class="tb-sep"></div>
   <button class="tb-btn blue"   id="btn-save">保存</button>
   <button class="tb-btn green"  id="btn-load">読み込み</button>
+  <button class="tb-btn green"  id="btn-load-excel" style="background:#38a169">Excelインポート</button>
   <button class="tb-btn orange" id="btn-pdf" onclick="window.print()">PDF出力</button>
   <span class="tb-note">※ 印刷ダイアログで「PDFとして保存」</span>
 </div>
@@ -1269,6 +1271,129 @@ document.getElementById('btn-load').addEventListener('click',()=>{
       }
     };
     reader.readAsText(file);
+  });
+  input.click();
+});
+
+// ================================================================
+//  Excel Import
+// ================================================================
+document.getElementById('btn-load-excel').addEventListener('click',()=>{
+  if(!confirm('現在の編集内容が失われますが、Excelファイルを読み込みますか？')) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.xlsx,.xls';
+  input.addEventListener('change',(e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try {
+        if(typeof XLSX === 'undefined') throw new Error('Excelライブラリの読み込みに失敗しました。インターネット接続を確認してください。');
+        const data = new Uint8Array(ev.target.result);
+        const wb = XLSX.read(data, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+
+        // タイトル行から学年を検出 (Row 1)
+        const titleCell = ws['A1'];
+        let detectedGrade = null;
+        if(titleCell && titleCell.v){
+          const gm = String(titleCell.v).match(/第(\d)学年/);
+          if(gm) detectedGrade = gm[1];
+        }
+
+        // ヘッダー行から教科名を取得 (Row 2)
+        const subjects = [];
+        const subjectCols = {};
+        for(let c=1; ; c++){
+          const addr = XLSX.utils.encode_cell({r:1, c:c});
+          const cell = ws[addr];
+          if(!cell || !cell.v) break;
+          const name = String(cell.v).trim();
+          if(ALL_SUBJECTS.includes(name)){
+            subjects.push(name);
+            subjectCols[name] = c;
+          }
+        }
+        if(subjects.length === 0) throw new Error('ヘッダー行に教科名が見つかりません。\n2行目に「国語」「算数」等の教科名が必要です。');
+
+        // 月→行の対応を取得 (Column A, rows 3+)
+        const monthRows = {};
+        for(let r=2; r<100; r++){
+          const addr = XLSX.utils.encode_cell({r:r, c:0});
+          const cell = ws[addr];
+          if(!cell || !cell.v) continue;
+          const val = String(cell.v).trim();
+          const mm = val.match(/^(\d{1,2})月$/);
+          if(mm){
+            const monthNum = parseInt(mm[1]);
+            if(MONTHS.includes(monthNum)){
+              monthRows[monthNum] = r;
+            }
+          }
+        }
+        if(Object.keys(monthRows).length === 0) throw new Error('月データが見つかりません。\nA列に「4月」「5月」等の月名が必要です。');
+
+        // 学年の設定
+        const grade = detectedGrade || state.grade;
+        state.grade = grade;
+        gradeSelect.value = grade;
+        state.units = {};
+        state.arrows = [];
+        uidCounter = 0;
+        aidCounter = 0;
+
+        // 各セルからデータを読み取り
+        for(const subj of subjects){
+          const col = subjectCols[subj];
+          for(const [monthNum, row] of Object.entries(monthRows)){
+            const m = parseInt(monthNum);
+            const addr = XLSX.utils.encode_cell({r:row, c:col});
+            const cell = ws[addr];
+            if(!cell || !cell.v) continue;
+            const text = String(cell.v).trim();
+            if(!text) continue;
+
+            const k = cellKey(subj, m);
+            if(!state.units[k]) state.units[k] = [];
+
+            // テキストを行ごとに分割して単元を解析
+            const lines = text.split(/\n/);
+            for(const line of lines){
+              const trimmed = line.trim();
+              if(!trimmed) continue;
+
+              // パターン1: 単元名(時数) — 例: "銀色の裏地(5)"
+              const match = trimmed.match(/^(.+?)\((\d+)\)\s*$/);
+              if(match){
+                state.units[k].push({
+                  id: uid(),
+                  unit: match[1].trim(),
+                  hours: parseInt(match[2])
+                });
+              } else {
+                // パターン2: 時数なし — テキストそのまま、時数0
+                state.units[k].push({
+                  id: uid(),
+                  unit: trimmed,
+                  hours: 0
+                });
+              }
+            }
+          }
+        }
+
+        if(extractMode) toggleExtract();
+        renderTable();
+
+        const monthCount = Object.keys(monthRows).length;
+        const unitCount = Object.values(state.units).reduce((s,arr)=>s+arr.length, 0);
+        alert(`Excelインポート完了\n\n学年: ${grade}年\n教科数: ${subjects.length}\n月数: ${monthCount}\n単元数: ${unitCount}`);
+      } catch(err){
+        alert('Excelファイルの読み込みに失敗しました。\n\n' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
   });
   input.click();
 });
