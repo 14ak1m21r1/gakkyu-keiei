@@ -348,45 +348,67 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
    Print
    ============================================================ */
 @media print{
-  @page{size:A3 landscape;margin:6mm;}
-  body{background:#fff !important;}
+  @page{size:A3 landscape;margin:5mm;}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{background:#fff !important;margin:0;padding:0;}
   body.arrow-mode{/* reset */}
   #toolbar,#modal-overlay,#subj-overlay,#arrow-banner{display:none !important;}
-  #title-bar{border:none;padding:3px 0 2px;font-size:13px;margin:0;}
-  #header-info{padding:0 0 4px;gap:0;}
-  .header-box{min-height:auto;padding:3px 6px;}
-  .header-box h4{font-size:8px;margin-bottom:1px;}
-  .header-box .header-content{font-size:7.5px;line-height:1.3;cursor:default;}
+
+  /* タイトル */
+  #title-bar{border:none;padding:2px 0 1px;font-size:12px;margin:0;}
+
+  /* ヘッダー情報（目標欄） */
+  #header-info{padding:0 0 2px;gap:0;}
+  .header-box{min-height:auto;padding:2px 5px;border-width:0.5px;}
+  .header-box h4{font-size:7px;margin-bottom:0px;}
+  .header-box .header-content{font-size:6.5px;line-height:1.25;cursor:default;}
   .header-box .header-content:empty::after{display:none;}
   .header-box .header-content:hover{background:transparent;}
+
+  /* テーブルコンテナ */
   #table-wrap{padding:0;overflow:visible;margin:0;}
   #table-inner{display:block;min-width:0;width:100%;}
+
+  /* テーブル本体 */
   #plan-table{box-shadow:none;width:100%;table-layout:fixed;}
-  #plan-table th,#plan-table td{font-size:8.5px;padding:2px 3px;line-height:1.35;}
+  #plan-table th,#plan-table td{
+    font-size:7px;padding:1px 2px;line-height:1.25;
+    border-width:0.5px;
+  }
   #plan-table thead th{
     position:static;
     background:#4a5568 !important;color:#fff !important;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact;
-    padding:3px 2px;
+    padding:2px 1px;font-size:7px;
   }
   td.subj-cell{
     background:#f7fafc !important;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact;
-    font-size:9px;
+    font-size:7.5px;width:55px !important;min-width:55px !important;
+    padding:1px 2px;
   }
-  td.data-cell{padding-bottom:2px;}
-  .unit-item{margin:0;padding:1px 1px;}
-  .unit-hours{font-size:7.5px;}
-  .sem1{background:#E8F0FE !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .sem2{background:#FFF8E1 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .sem3{background:#E8F5E9 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .sem-summer{background:#F5F5F5 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  td.total-cell,th.total-hdr{background:#edf2f7 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  td.data-cell{padding:1px 2px;}
+  .unit-item{margin:0;padding:0px 1px;font-size:7px;line-height:1.2;}
+  .unit-hours{font-size:6px;}
+  td.total-cell{font-size:7px;width:30px !important;}
+  th.total-hdr{width:30px !important;}
+
+  /* 学期カラー */
+  .sem1{background:#E8F0FE !important;}
+  .sem2{background:#FFF8E1 !important;}
+  .sem3{background:#E8F5E9 !important;}
+  .sem-summer{background:#F5F5F5 !important;}
+  td.total-cell,th.total-hdr{background:#edf2f7 !important;}
   .hide-total td.total-cell,.hide-total th.total-hdr,.hide-total colgroup col.col-total{display:none;}
+
+  /* 矢印 */
   #arrow-svg{pointer-events:none;}
   .arrow-hit{display:none;}
-  td.data-cell.jiko-row{background:#FFF3E0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+
+  /* 抽出版 */
+  td.data-cell.jiko-row{background:#FFF3E0 !important;}
+  td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
+
+  /* ページ内に収める */
+  html{font-size:9px;}
 }
 </style>
 </head>
