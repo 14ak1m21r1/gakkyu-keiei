@@ -426,6 +426,15 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
     <option value="3">3年</option><option value="4">4年</option>
     <option value="5" selected>5年</option><option value="6">6年</option>
   </select>
+  <label for="title-type" style="margin-left:4px">種別：</label>
+  <select id="title-type" style="font-size:12px;padding:3px 6px;border-radius:6px;border:none;">
+    <option value="gakunen">学年経営案</option>
+    <option value="gakkyu" selected>学級経営案</option>
+  </select>
+  <select id="class-select" style="font-size:12px;padding:3px 6px;border-radius:6px;border:none;">
+    <option value="1">1組</option>
+    <option value="2">2組</option>
+  </select>
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-reset" style="background:#718096;font-size:11px">リセット</button>
   <div class="tb-sep"></div>
@@ -651,10 +660,18 @@ function renderTable(){
   const subjects = extractMode ? getExtractSubjects() : getSubjects();
 
   // Title
-  if(extractMode){
-    titleBar.textContent = `令和7年度　第${state.grade}学年　年間単元指導計画表【抽出版：自己実現活動】`;
+  const titleType = document.getElementById('title-type').value;
+  const classNum = document.getElementById('class-select').value;
+  let titlePrefix;
+  if(titleType === 'gakunen'){
+    titlePrefix = `令和7年度　第${state.grade}学年学年経営案`;
   } else {
-    titleBar.textContent = `令和7年度　第${state.grade}学年　年間単元指導計画表`;
+    titlePrefix = `令和7年度　第${state.grade}学年${classNum}組学級経営案`;
+  }
+  if(extractMode){
+    titleBar.textContent = titlePrefix + '　年間単元指導計画表【抽出版：自己実現活動】';
+  } else {
+    titleBar.textContent = titlePrefix + '　年間単元指導計画表';
   }
 
   const table = document.getElementById('plan-table');
@@ -1059,6 +1076,13 @@ gradeSelect.addEventListener('change',()=>{
 document.getElementById('jiko-pos').addEventListener('change',()=>{
   renderTable();
 });
+// タイトル種別・組の変更
+document.getElementById('title-type').addEventListener('change',()=>{
+  const isGakkyu = document.getElementById('title-type').value === 'gakkyu';
+  document.getElementById('class-select').style.display = isGakkyu ? '' : 'none';
+  renderTable();
+});
+document.getElementById('class-select').addEventListener('change',()=>{ renderTable(); });
 
 // ================================================================
 //  Subject Editor (教科別一覧編集)
@@ -1344,6 +1368,8 @@ document.getElementById('btn-save').addEventListener('click',()=>{
     grade: state.grade,
     savedAt: new Date().toISOString(),
     jikoPos: document.getElementById('jiko-pos').value,
+    titleType: document.getElementById('title-type').value,
+    classNum: document.getElementById('class-select').value,
     headerInfo: getHeaderData(),
     units: state.units,
     arrows: state.arrows
@@ -1379,6 +1405,11 @@ document.getElementById('btn-load').addEventListener('click',()=>{
         state.arrows = data.arrows || [];
         gradeSelect.value = state.grade;
         if(data.jikoPos) document.getElementById('jiko-pos').value = data.jikoPos;
+        if(data.titleType){
+          document.getElementById('title-type').value = data.titleType;
+          document.getElementById('class-select').style.display = data.titleType === 'gakkyu' ? '' : 'none';
+        }
+        if(data.classNum) document.getElementById('class-select').value = data.classNum;
         setHeaderData(data.headerInfo);
         let maxU=0, maxA=0;
         for(const units of Object.values(state.units)){
@@ -1414,7 +1445,12 @@ document.getElementById('btn-export-excel').addEventListener('click',()=>{
   const wsData = [];
 
   // Row 1: タイトル
-  const titleRow = [`令和7年度　第${grade}学年　年間単元指導計画表`];
+  const exTitleType = document.getElementById('title-type').value;
+  const exClassNum = document.getElementById('class-select').value;
+  const exPrefix = exTitleType === 'gakunen'
+    ? `令和7年度　第${grade}学年学年経営案`
+    : `令和7年度　第${grade}学年${exClassNum}組学級経営案`;
+  const titleRow = [`${exPrefix}　年間単元指導計画表`];
   for(let i=0; i<subjects.length; i++) titleRow.push('');
   wsData.push(titleRow);
 
