@@ -367,10 +367,10 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
 
   /* テーブルコンテナ */
   #table-wrap{padding:0;overflow:visible;margin:0;}
-  #table-inner{display:block;min-width:0;width:100%;}
+  #table-inner{display:block;width:100%;}
 
   /* テーブル本体 */
-  #plan-table{box-shadow:none;width:100%;table-layout:fixed;}
+  #plan-table{box-shadow:none;width:100% !important;table-layout:fixed;}
   #plan-table th,#plan-table td{
     font-size:7px;padding:1px 2px;line-height:1.25;
     border-width:0.5px;
@@ -380,11 +380,15 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
     background:#4a5568 !important;color:#fff !important;
     padding:2px 1px;font-size:7px;
   }
+  #plan-table colgroup col{width:auto !important;}
+  #plan-table colgroup col:first-child{width:45px !important;}
+  #plan-table colgroup col.col-total{width:30px !important;}
   td.subj-cell{
     background:#f7fafc !important;
-    font-size:7.5px;width:55px !important;min-width:55px !important;
+    font-size:7.5px;width:45px !important;min-width:auto !important;
     padding:1px 2px;
   }
+  th:first-child{width:45px !important;}
   td.data-cell{padding:1px 2px;}
   .unit-item{margin:0;padding:0px 1px;font-size:7px;line-height:1.2;}
   .unit-hours{font-size:6px;}
