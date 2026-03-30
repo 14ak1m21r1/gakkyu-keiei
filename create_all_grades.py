@@ -62,8 +62,8 @@ WIDE_SUBJECTS = {"国語": 22, "算数": 18, "社会": 18, "理科": 16, "道徳
 DEFAULT_WIDTH = 14
 
 
-def create_grade_excel(grade_str):
-    """1学年分のExcelを生成"""
+def create_grade_sheet(wb, grade_str, is_first=False):
+    """1学年分のシートをワークブックに追加"""
     grade_data = CURRICULUM[grade_str]
     # この学年で使う教科だけフィルタ
     subjects = [s for s in ALL_SUBJECTS if s in grade_data]
@@ -85,10 +85,12 @@ def create_grade_excel(grade_str):
             TEXT[subj][m_label] += f"{name}({h})"
             HOURS[subj][m_label] += h
 
-    # ワークブック作成
-    wb = Workbook()
-    ws = wb.active
-    ws.title = f"{grade_str}年年間単元指導計画"
+    # シート作成
+    if is_first:
+        ws = wb.active
+        ws.title = f"{grade_str}年"
+    else:
+        ws = wb.create_sheet(title=f"{grade_str}年")
 
     # ページ設定（A3横向き）
     ws.page_setup.paperSize = 8
@@ -205,27 +207,27 @@ def create_grade_excel(grade_str):
     # ── 印刷設定 ──
     ws.print_title_rows = "1:2"
 
-    # ── 保存 ──
-    output_path = OUTPUT_DIR / f"{grade_str}年_年間単元指導計画表_確認用.xlsx"
-    wb.save(str(output_path))
-    return output_path
+    return subjects
 
 
 def main():
     print("年間単元指導計画 確認用Excelファイルを生成中...\n")
-    for grade in sorted(CURRICULUM.keys(), key=int):
-        path = create_grade_excel(grade)
-        # 年間合計の検証
+
+    wb = Workbook()
+    for i, grade in enumerate(sorted(CURRICULUM.keys(), key=int)):
+        subjects = create_grade_sheet(wb, grade, is_first=(i == 0))
         grade_data = CURRICULUM[grade]
-        subjects = [s for s in ALL_SUBJECTS if s in grade_data]
-        print(f"  {grade}年生: {path.name}  ({len(subjects)}教科)")
+        print(f"  {grade}年生: {len(subjects)}教科")
         for subj in subjects:
             total = sum(u["hours"] for u in grade_data[subj])
             if total > 0:
                 print(f"    {subj}: {total}時間")
             else:
                 print(f"    {subj}: （未入力）")
-    print(f"\n完了: {OUTPUT_DIR}/")
+
+    output_path = OUTPUT_DIR / "全学年_年間単元指導計画表_確認用.xlsx"
+    wb.save(str(output_path))
+    print(f"\n完了: {output_path}")
 
 
 if __name__ == "__main__":
