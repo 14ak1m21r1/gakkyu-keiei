@@ -92,6 +92,30 @@ body{
 .header-box .header-edit:focus{outline:none;box-shadow:0 0 0 2px rgba(66,153,225,.3);}
 
 /* ============================================================
+   Cell Color Picker (右クリックメニュー)
+   ============================================================ */
+#color-menu{
+  display:none;position:fixed;z-index:500;
+  background:#fff;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);
+  padding:8px;min-width:180px;
+}
+#color-menu.open{display:block;}
+#color-menu .cm-title{font-size:11px;font-weight:700;color:#4a5568;margin-bottom:6px;}
+#color-menu .cm-palette{display:flex;flex-wrap:wrap;gap:4px;}
+#color-menu .cm-swatch{
+  width:24px;height:24px;border-radius:4px;cursor:pointer;
+  border:2px solid transparent;transition:all .1s;
+}
+#color-menu .cm-swatch:hover{transform:scale(1.15);border-color:#333;}
+#color-menu .cm-swatch.active{border-color:#333;box-shadow:0 0 0 2px #4299e1;}
+#color-menu .cm-clear{
+  margin-top:6px;padding:4px 8px;font-size:10px;
+  background:#edf2f7;border:none;border-radius:4px;cursor:pointer;
+  color:#4a5568;width:100%;
+}
+#color-menu .cm-clear:hover{background:#e2e8f0;}
+
+/* ============================================================
    Table Wrapper (contains table + SVG overlay)
    ============================================================ */
 #table-wrap{
@@ -352,7 +376,7 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   body{background:#fff !important;margin:0;padding:0;}
   body.arrow-mode{/* reset */}
-  #toolbar,#modal-overlay,#subj-overlay,#arrow-banner{display:none !important;}
+  #toolbar,#modal-overlay,#subj-overlay,#arrow-banner,#color-menu{display:none !important;}
 
   /* タイトル */
   #title-bar{border:none;padding:4px 0 3px;font-size:14px;margin:0;}
@@ -501,6 +525,13 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
   </div>
 </div>
 
+<!-- ===== Cell Color Menu ===== -->
+<div id="color-menu">
+  <div class="cm-title">背景色の設定</div>
+  <div class="cm-palette" id="cm-palette"></div>
+  <button class="cm-clear" id="cm-clear">色をクリア</button>
+</div>
+
 <!-- ===== Modal (Cell Editor) ===== -->
 <div id="modal-overlay">
   <div id="modal">
@@ -565,7 +596,7 @@ function monthLabel(m){return MONTH_LABELS[MONTHS.indexOf(m)];}
 // ================================================================
 //  State
 // ================================================================
-let state = { grade:'5', units:{}, arrows:[] };
+let state = { grade:'5', units:{}, arrows:[], cellColors:{} };
 let uidCounter = 0;
 function uid(){return 'u'+(++uidCounter);}
 let aidCounter = 0;
@@ -580,6 +611,7 @@ function initGrade(grade){
   state.grade = grade;
   state.units = {};
   state.arrows = [];
+  state.cellColors = {};
   uidCounter = 0;
   aidCounter = 0;
   const gd = CURRICULUM_DATA[grade];
@@ -724,7 +756,9 @@ function renderTable(){
       }
       totalHrs += hrs;
       const jikoCls = isJiko ? ' jiko-row' : '';
-      bhtml += `<td class="data-cell ${cls}${jikoCls}" data-subj="${esc(subj)}" data-month="${m}">${ch}</td>`;
+      const bgColor = state.cellColors[cellKey(subj,m)] || '';
+      const bgStyle = bgColor ? ` style="background:${bgColor} !important"` : '';
+      bhtml += `<td class="data-cell ${cls}${jikoCls}" data-subj="${esc(subj)}" data-month="${m}"${bgStyle}>${ch}</td>`;
     }
     bhtml += `<td class="total-cell">${totalHrs}</td>`;
     bhtml += `</tr>`;
@@ -1324,6 +1358,68 @@ document.getElementById('btn-reset').addEventListener('click',()=>{
 });
 
 // ================================================================
+//  Cell Color Picker (背景色設定)
+// ================================================================
+const colorMenu = document.getElementById('color-menu');
+const cmPalette = document.getElementById('cm-palette');
+let colorTarget = null; // {subj, month}
+
+const CELL_COLORS = [
+  '#FFCDD2','#F8BBD0','#E1BEE7','#D1C4E9','#C5CAE9',
+  '#BBDEFB','#B3E5FC','#B2EBF2','#B2DFDB','#C8E6C9',
+  '#DCEDC8','#F0F4C3','#FFF9C4','#FFECB3','#FFE0B2',
+  '#FFCCBC','#D7CCC8','#F5F5F5','#CFD8DC','#FFFFFF',
+];
+
+// パレット生成
+CELL_COLORS.forEach(c=>{
+  const sw = document.createElement('div');
+  sw.className = 'cm-swatch';
+  sw.style.background = c;
+  sw.addEventListener('click',()=>{
+    if(!colorTarget) return;
+    const k = cellKey(colorTarget.subj, colorTarget.month);
+    state.cellColors[k] = c;
+    closeColorMenu();
+    renderTable();
+  });
+  cmPalette.appendChild(sw);
+});
+
+document.getElementById('cm-clear').addEventListener('click',()=>{
+  if(!colorTarget) return;
+  delete state.cellColors[cellKey(colorTarget.subj, colorTarget.month)];
+  closeColorMenu();
+  renderTable();
+});
+
+function closeColorMenu(){ colorMenu.classList.remove('open'); colorTarget=null; }
+document.addEventListener('click',(e)=>{
+  if(!colorMenu.contains(e.target)) closeColorMenu();
+});
+
+// 右クリックでカラーメニュー表示
+document.getElementById('plan-table').addEventListener('contextmenu',(e)=>{
+  const cell = e.target.closest('td.data-cell');
+  if(!cell) return;
+  e.preventDefault();
+  const subj = cell.dataset.subj;
+  const month = parseInt(cell.dataset.month);
+  colorTarget = {subj, month};
+
+  // 現在の色をハイライト
+  const currentColor = state.cellColors[cellKey(subj,month)] || '';
+  cmPalette.querySelectorAll('.cm-swatch').forEach((sw,i)=>{
+    sw.classList.toggle('active', CELL_COLORS[i] === currentColor);
+  });
+
+  // メニュー位置
+  colorMenu.style.left = Math.min(e.clientX, window.innerWidth - 200) + 'px';
+  colorMenu.style.top = Math.min(e.clientY, window.innerHeight - 250) + 'px';
+  colorMenu.classList.add('open');
+});
+
+// ================================================================
 //  Header Info (学校目標・学年目標・学級目標・担任情報)
 // ================================================================
 const HEADER_IDS = ['hdr-school','hdr-grade','hdr-class','hdr-teacher'];
@@ -1372,7 +1468,8 @@ document.getElementById('btn-save').addEventListener('click',()=>{
     classNum: document.getElementById('class-select').value,
     headerInfo: getHeaderData(),
     units: state.units,
-    arrows: state.arrows
+    arrows: state.arrows,
+    cellColors: state.cellColors
   };
   const json = JSON.stringify(saveData, null, 2);
   const blob = new Blob([json], {type:'application/json'});
@@ -1403,6 +1500,7 @@ document.getElementById('btn-load').addEventListener('click',()=>{
         state.grade  = String(data.grade);
         state.units  = data.units;
         state.arrows = data.arrows || [];
+        state.cellColors = data.cellColors || {};
         gradeSelect.value = state.grade;
         if(data.jikoPos) document.getElementById('jiko-pos').value = data.jikoPos;
         if(data.titleType){
