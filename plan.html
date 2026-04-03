@@ -707,13 +707,13 @@ function renderTable(){
     titlePrefix = `2026年度　第${state.grade}学年${classNum}組学級経営案`;
   }
   if(extractMode){
-    titleBar.textContent = titlePrefix + '　年間単元指導計画表【抽出版：自己実現活動】';
+    titleBar.textContent = titlePrefix + '【抽出版：自己実現活動】';
   } else {
-    titleBar.textContent = titlePrefix + '　年間単元指導計画表';
+    titleBar.textContent = titlePrefix;
   }
   // 出力日を更新
   const now = new Date();
-  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 出力`;
+  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日版`;
   document.getElementById('print-date').textContent = dateStr;
 
   const table = document.getElementById('plan-table');
@@ -1558,7 +1558,7 @@ document.getElementById('btn-export-excel').addEventListener('click',()=>{
   const exPrefix = exTitleType === 'gakunen'
     ? `2026年度　第${grade}学年学年経営案`
     : `2026年度　第${grade}学年${exClassNum}組学級経営案`;
-  const titleRow = [`${exPrefix}　年間単元指導計画表`];
+  const titleRow = [exPrefix];
   for(let i=0; i<subjects.length; i++) titleRow.push('');
   wsData.push(titleRow);
 
