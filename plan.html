@@ -482,6 +482,7 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
   <button class="tb-btn green"  id="btn-load-excel" style="background:#38a169">Excelインポート</button>
   <button class="tb-btn blue" id="btn-export-excel" style="background:#2b6cb0">Excelテンプレート</button>
   <button class="tb-btn orange" id="btn-pdf" onclick="window.print()">PDF出力</button>
+  <button class="tb-btn orange" id="btn-pdf-all" style="background:#c05621">全学年PDF</button>
   <span class="tb-note">※ 印刷ダイアログで「PDFとして保存」｜セル右クリックで背景色を変更できます</span>
 </div>
 
@@ -1781,6 +1782,86 @@ planTable.classList.add('hide-total');
 btnTotal.addEventListener('click',()=>{
   const hidden = planTable.classList.toggle('hide-total');
   btnTotal.textContent = hidden ? '合計を表示' : '合計を非表示';
+});
+
+// ================================================================
+//  All-Grades PDF (全学年一括PDF出力)
+// ================================================================
+document.getElementById('btn-pdf-all').addEventListener('click',()=>{
+  // 現在の状態を退避
+  const savedGrade = state.grade;
+  const savedUnits = state.units;
+  const savedArrows = state.arrows;
+  const savedColors = state.cellColors;
+  const savedUid = uidCounter;
+  const savedAid = aidCounter;
+  const savedExtract = extractMode;
+  if(savedExtract) toggleExtract();
+
+  // 全学年のHTMLを生成
+  const grades = ['1','2','3','4','5','6'];
+  const pages = [];
+
+  for(const g of grades){
+    initGrade(g);
+    // タイトル種別は「学年経営案」に固定
+    const origType = document.getElementById('title-type').value;
+    document.getElementById('title-type').value = 'gakunen';
+    renderTable();
+    document.getElementById('title-type').value = origType;
+
+    // 現在のtitle-wrap + header-info + table-wrap のHTMLを取得
+    const titleHtml = document.getElementById('title-wrap').outerHTML;
+    const headerHtml = document.getElementById('header-info').outerHTML;
+    const tableHtml = document.getElementById('table-wrap').outerHTML;
+    pages.push({titleHtml, headerHtml, tableHtml});
+  }
+
+  // 状態を復元
+  state.grade = savedGrade;
+  state.units = savedUnits;
+  state.arrows = savedArrows;
+  state.cellColors = savedColors;
+  uidCounter = savedUid;
+  aidCounter = savedAid;
+  gradeSelect.value = savedGrade;
+  renderTable();
+
+  // 印刷用ウィンドウを開く
+  const printWin = window.open('','_blank');
+  // 現在のページからスタイルを取得
+  const styles = document.querySelector('style').outerHTML;
+  const sheetjs = '';
+
+  let bodyHtml = '';
+  pages.forEach((p, i)=>{
+    const pageBreak = i > 0 ? 'style="page-break-before:always;"' : '';
+    bodyHtml += `<div ${pageBreak}>
+      ${p.titleHtml}
+      ${p.headerHtml}
+      ${p.tableHtml}
+    </div>`;
+  });
+
+  printWin.document.write(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+${styles}
+<style>
+  #toolbar{display:none !important;}
+  body{background:#fff;margin:0;padding:0;}
+  @media print{
+    #toolbar{display:none !important;}
+  }
+</style>
+</head>
+<body>
+${bodyHtml}
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`);
+  printWin.document.close();
 });
 
 // ================================================================
