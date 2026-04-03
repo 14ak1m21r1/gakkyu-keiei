@@ -548,6 +548,16 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
     </div>
     <button class="cm-clear" id="cm-merge-clear">結合を解除</button>
   </div>
+  <div style="border-top:1px solid #e2e8f0;margin-top:6px;padding-top:6px;">
+    <div class="cm-title">セルの文字サイズ</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+      <button class="cm-clear cm-fs" data-fs="" style="width:auto;flex:1">標準</button>
+      <button class="cm-clear cm-fs" data-fs="1.8mm" style="width:auto;flex:1">小</button>
+      <button class="cm-clear cm-fs" data-fs="2.5mm" style="width:auto;flex:1">中</button>
+      <button class="cm-clear cm-fs" data-fs="3mm" style="width:auto;flex:1">大</button>
+    </div>
+    <button class="cm-clear" id="cm-bold-toggle">太字 切替</button>
+  </div>
 </div>
 
 <!-- ===== Modal (Cell Editor) ===== -->
@@ -614,7 +624,7 @@ function monthLabel(m){return MONTH_LABELS[MONTHS.indexOf(m)];}
 // ================================================================
 //  State
 // ================================================================
-let state = { grade:'5', units:{}, arrows:[], cellColors:{}, mergedCells:{} };
+let state = { grade:'5', units:{}, arrows:[], cellColors:{}, mergedCells:{}, cellStyles:{} };
 let uidCounter = 0;
 function uid(){return 'u'+(++uidCounter);}
 let aidCounter = 0;
@@ -631,6 +641,7 @@ function initGrade(grade){
   state.arrows = [];
   state.cellColors = {};
   state.mergedCells = {};
+  state.cellStyles = {};
   uidCounter = 0;
   aidCounter = 0;
   const gd = CURRICULUM_DATA[grade];
@@ -816,15 +827,26 @@ function renderTable(){
       let ch = '';
       let hrs = 0;
       for(const u of allUnits){
-        ch += `<div class="unit-item" data-uid="${u.id}" draggable="true">${esc(u.unit)}<span class="unit-hours">（${u.hours}）</span></div>`;
+        const us = u.style || {};
+        let uStyle = '';
+        const uParts = [];
+        if(us.fontSize) uParts.push(`font-size:${us.fontSize}`);
+        if(us.bold) uParts.push('font-weight:700');
+        if(uParts.length) uStyle = ` style="${uParts.join(';')}"`;
+        ch += `<div class="unit-item" data-uid="${u.id}" draggable="true"${uStyle}>${esc(u.unit)}<span class="unit-hours">（${u.hours}）</span></div>`;
         hrs += u.hours;
       }
       totalHrs += hrs;
       const jikoCls = isJiko ? ' jiko-row' : '';
       const bgColor = state.cellColors[k] || '';
-      const bgStyle = bgColor ? ` style="background:${bgColor} !important"` : '';
+      const cs = state.cellStyles[k] || {};
+      const styleParts = [];
+      if(bgColor) styleParts.push(`background:${bgColor} !important`);
+      if(cs.fontSize) styleParts.push(`font-size:${cs.fontSize}`);
+      if(cs.bold) styleParts.push('font-weight:700');
+      const tdStyle = styleParts.length ? ` style="${styleParts.join(';')}"` : '';
       const colspan = mergeSpan > 1 ? ` colspan="${mergeSpan}"` : '';
-      bhtml += `<td class="data-cell ${cls}${jikoCls}" data-subj="${esc(subj)}" data-month="${m}"${bgStyle}${colspan}>${ch}</td>`;
+      bhtml += `<td class="data-cell ${cls}${jikoCls}" data-subj="${esc(subj)}" data-month="${m}"${tdStyle}${colspan}>${ch}</td>`;
       if(mergeSpan > 1) skipUntil = mi + mergeSpan;
     }
     bhtml += `<td class="total-cell">${totalHrs}</td>`;
@@ -845,7 +867,7 @@ let editUnits = [];
 
 function openEditor(subj, month){
   editKey = cellKey(subj, month);
-  editUnits = (state.units[editKey]||[]).map(u=>({...u}));
+  editUnits = (state.units[editKey]||[]).map(u=>({...u, style:{...(u.style||{})}}));
   modalTitle.textContent = '単元の編集';
   modalSub.textContent = `${subj} ─ ${monthLabel(month)}`;
   renderModalBody();
@@ -863,16 +885,27 @@ function renderModalBody(){
   }
   let h='';
   editUnits.forEach((u,i)=>{
+    const us = u.style||{};
+    const boldCls = us.bold ? 'active' : '';
+    const curFs = us.fontSize || '';
     h+=`<div class="mu-row" data-idx="${i}" draggable="true">
       <span class="mu-drag" title="ドラッグで並べ替え">&#9776;</span>
       <input class="mu-name" value="${escAttr(u.unit)}" data-field="unit">
       <input class="mu-hours" type="number" min="0" value="${u.hours}" data-field="hours">
       <span style="font-size:11px;color:#718096">時間</span>
+      <select class="mu-fs" data-idx="${i}" style="font-size:10px;padding:2px;border-radius:3px;border:1px solid #cbd5e0;">
+        <option value=""${curFs===''?' selected':''}>標準</option>
+        <option value="1.8mm"${curFs==='1.8mm'?' selected':''}>小</option>
+        <option value="2.5mm"${curFs==='2.5mm'?' selected':''}>中</option>
+        <option value="3mm"${curFs==='3mm'?' selected':''}>大</option>
+      </select>
+      <button class="mu-bold ${boldCls}" data-idx="${i}" style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:3px;border:1px solid #cbd5e0;cursor:pointer;background:${us.bold?'#4a5568':'#fff'};color:${us.bold?'#fff':'#333'};" title="太字">B</button>
       <button class="mu-del" onclick="delUnit(${i})">&#10005;</button>
     </div>`;
   });
   modalBody.innerHTML=h;
   setupDragReorder();
+  setupStyleEvents();
 }
 
 function escAttr(s){return s.replace(/"/g,'&quot;').replace(/</g,'&lt;');}
@@ -885,6 +918,26 @@ function syncEditorInputs(){
     const hrsEl=row.querySelector('[data-field="hours"]');
     if(nameEl) editUnits[i].unit=nameEl.value;
     if(hrsEl)  editUnits[i].hours=parseInt(hrsEl.value)||0;
+    const fsEl=row.querySelector('.mu-fs');
+    if(fsEl){
+      if(!editUnits[i].style) editUnits[i].style={};
+      editUnits[i].style.fontSize = fsEl.value || undefined;
+      if(!fsEl.value) delete editUnits[i].style.fontSize;
+    }
+  });
+}
+function setupStyleEvents(){
+  modalBody.querySelectorAll('.mu-fs').forEach(sel=>{
+    sel.addEventListener('change',()=>{ syncEditorInputs(); });
+  });
+  modalBody.querySelectorAll('.mu-bold').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const idx = parseInt(btn.dataset.idx);
+      if(!editUnits[idx].style) editUnits[idx].style={};
+      editUnits[idx].style.bold = !editUnits[idx].style.bold;
+      syncEditorInputs();
+      renderModalBody();
+    });
   });
 }
 
@@ -1478,6 +1531,31 @@ document.getElementById('cm-merge-clear').addEventListener('click',()=>{
   renderTable();
 });
 
+// セル文字サイズ
+document.querySelectorAll('.cm-fs').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(!colorTarget) return;
+    const k = cellKey(colorTarget.subj, colorTarget.month);
+    const fs = btn.dataset.fs;
+    if(!fs){ delete state.cellStyles[k]; }
+    else {
+      if(!state.cellStyles[k]) state.cellStyles[k]={};
+      state.cellStyles[k].fontSize = fs;
+    }
+    closeColorMenu();
+    renderTable();
+  });
+});
+// セル太字切替
+document.getElementById('cm-bold-toggle').addEventListener('click',()=>{
+  if(!colorTarget) return;
+  const k = cellKey(colorTarget.subj, colorTarget.month);
+  if(!state.cellStyles[k]) state.cellStyles[k]={};
+  state.cellStyles[k].bold = !state.cellStyles[k].bold;
+  closeColorMenu();
+  renderTable();
+});
+
 function closeColorMenu(){ colorMenu.classList.remove('open'); colorTarget=null; }
 document.addEventListener('click',(e)=>{
   if(!colorMenu.contains(e.target)) closeColorMenu();
@@ -1555,7 +1633,8 @@ document.getElementById('btn-save').addEventListener('click',()=>{
     units: state.units,
     arrows: state.arrows,
     cellColors: state.cellColors,
-    mergedCells: state.mergedCells
+    mergedCells: state.mergedCells,
+    cellStyles: state.cellStyles
   };
   const json = JSON.stringify(saveData, null, 2);
   const blob = new Blob([json], {type:'application/json'});
@@ -1588,6 +1667,7 @@ document.getElementById('btn-load').addEventListener('click',()=>{
         state.arrows = data.arrows || [];
         state.cellColors = data.cellColors || {};
         state.mergedCells = data.mergedCells || {};
+        state.cellStyles = data.cellStyles || {};
         gradeSelect.value = state.grade;
         if(data.jikoPos) document.getElementById('jiko-pos').value = data.jikoPos;
         if(data.titleType){
