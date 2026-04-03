@@ -379,46 +379,46 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
   #toolbar,#modal-overlay,#subj-overlay,#arrow-banner,#color-menu{display:none !important;}
 
   /* タイトル */
-  #title-bar{border:none;padding:4px 0 3px;font-size:16px;margin:0;}
-  #print-date{font-size:9px !important;color:#333 !important;}
+  #title-bar{border:none;padding:2px 0 1px;font-size:13px;margin:0;}
+  #print-date{font-size:8px !important;color:#333 !important;}
 
   /* ヘッダー情報（目標欄） */
-  #header-info{padding:0 0 4px;gap:0;}
-  .header-box{min-height:auto;padding:3px 6px;border-width:0.5px;}
-  .header-box h4{font-size:9px;margin-bottom:1px;}
-  .header-box .header-content{font-size:8px;line-height:1.35;cursor:default;}
+  #header-info{padding:0 0 2px;gap:0;}
+  .header-box{min-height:auto;padding:2px 4px;border-width:0.5px;}
+  .header-box h4{font-size:7px;margin-bottom:0;}
+  .header-box .header-content{font-size:6.5px;line-height:1.2;cursor:default;}
   .header-box .header-content:empty::after{display:none;}
   .header-box .header-content:hover{background:transparent;}
 
-  /* テーブルコンテナ */
-  #table-wrap{padding:0;overflow:visible;margin:0;}
-  #table-inner{display:block;width:100%;}
+  /* テーブルコンテナ - ページ幅に収める */
+  #table-wrap{padding:0;overflow:hidden !important;margin:0;max-width:100vw;}
+  #table-inner{display:block;width:100%;min-width:0 !important;overflow:hidden;}
 
-  /* テーブル本体 - 読みやすいサイズ（スケーリングで縮小） */
-  #plan-table{box-shadow:none;width:100% !important;table-layout:fixed;}
+  /* テーブル本体 */
+  #plan-table{box-shadow:none;width:100% !important;table-layout:fixed;max-width:100%;}
   #plan-table th,#plan-table td{
-    font-size:9px;padding:2px 3px;line-height:1.35;
-    border-width:0.5px;overflow:hidden;
+    font-size:8px;padding:1px 2px;line-height:1.25;
+    border-width:0.5px;overflow:hidden;word-break:break-all;
   }
   #plan-table thead th{
     position:static;
     background:#4a5568 !important;color:#fff !important;
-    padding:3px 2px;font-size:9px;
+    padding:2px 1px;font-size:7.5px;
   }
   #plan-table colgroup col{width:auto !important;}
-  #plan-table colgroup col:first-child{width:50px !important;}
-  #plan-table colgroup col.col-total{width:30px !important;}
+  #plan-table colgroup col:first-child{width:42px !important;}
+  #plan-table colgroup col.col-total{width:26px !important;}
   td.subj-cell{
     background:#f7fafc !important;
-    font-size:9px;width:50px !important;min-width:auto !important;
-    padding:2px 2px;
+    font-size:7.5px;width:42px !important;min-width:auto !important;
+    padding:1px 1px;word-break:keep-all;
   }
-  th:first-child{width:50px !important;}
-  td.data-cell{padding:2px 2px;}
-  .unit-item{margin:0 0 1px;padding:0 1px;font-size:8.5px;line-height:1.3;}
-  .unit-hours{font-size:7px;}
-  td.total-cell{font-size:8px;width:30px !important;}
-  th.total-hdr{width:30px !important;}
+  th:first-child{width:42px !important;}
+  td.data-cell{padding:1px 2px;}
+  .unit-item{margin:0;padding:0 1px;font-size:7.5px;line-height:1.2;}
+  .unit-hours{font-size:6px;}
+  td.total-cell{font-size:7px;width:26px !important;}
+  th.total-hdr{width:26px !important;}
 
   /* 学期カラー */
   .sem1{background:#E8F0FE !important;}
@@ -487,7 +487,6 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
 </div>
 
 <!-- ===== Title ===== -->
-<div id="print-area">
 <div id="title-wrap" style="position:relative;background:#fff;">
   <div id="title-bar"></div>
   <div id="print-date" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:10px;color:#718096;"></div>
@@ -531,8 +530,6 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
     </svg>
   </div>
 </div>
-</div><!-- /print-area -->
-
 <!-- ===== Cell Color Menu ===== -->
 <div id="color-menu">
   <div class="cm-title">背景色の設定</div>
@@ -1944,21 +1941,6 @@ ${bodyHtml}
 // ================================================================
 //  Print Auto-Scale (A3横1ページにフィット)
 // ================================================================
-window.addEventListener('beforeprint',()=>{
-  const area = document.getElementById('print-area');
-  // zoomをリセットして実サイズを測定
-  area.style.zoom = '1';
-  const contentH = area.scrollHeight;
-  // A3横の印刷可能高さ（margin:4mm, 297mm - 8mm = 289mm, 96dpi: 1mm≈3.78px）
-  const pageH = 289 * 3.78;
-  if(contentH > pageH){
-    const z = pageH / contentH;
-    area.style.zoom = String(Math.floor(z * 100) / 100);
-  }
-});
-window.addEventListener('afterprint',()=>{
-  document.getElementById('print-area').style.zoom = '';
-});
 
 // ================================================================
 //  Init
