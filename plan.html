@@ -380,6 +380,7 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
 
   /* タイトル */
   #title-bar{border:none;padding:3px 0 2px;font-size:12px;margin:0;}
+  #print-date{font-size:7px !important;color:#333 !important;}
 
   /* ヘッダー情報（目標欄） */
   #header-info{padding:0 0 3px;gap:0;}
@@ -485,13 +486,17 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
 </div>
 
 <!-- ===== Title ===== -->
-<div id="title-bar"></div>
+<div id="title-wrap" style="position:relative;background:#fff;">
+  <div id="title-bar"></div>
+  <div id="print-date" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:10px;color:#718096;"></div>
+</div>
 
 <!-- ===== Header Info ===== -->
 <div id="header-info">
   <div class="header-box">
     <h4>●学校教育目標</h4>
-    <div class="header-content" id="hdr-school" tabindex="0"></div>
+    <div class="header-content" id="hdr-school" tabindex="0">自ら学び　ともに手をとり合い　生活を切り拓く子の育成
+○明るく元気に取り組む子　○よく考え工夫して学ぶ子　○いつくしみあい仲よく助け合う子　○よい生き方を求め続ける子</div>
   </div>
   <div class="header-box">
     <h4>●学年目標</h4>
@@ -696,15 +701,19 @@ function renderTable(){
   const classNum = document.getElementById('class-select').value;
   let titlePrefix;
   if(titleType === 'gakunen'){
-    titlePrefix = `令和7年度　第${state.grade}学年学年経営案`;
+    titlePrefix = `2026年度　第${state.grade}学年学年経営案`;
   } else {
-    titlePrefix = `令和7年度　第${state.grade}学年${classNum}組学級経営案`;
+    titlePrefix = `2026年度　第${state.grade}学年${classNum}組学級経営案`;
   }
   if(extractMode){
     titleBar.textContent = titlePrefix + '　年間単元指導計画表【抽出版：自己実現活動】';
   } else {
     titleBar.textContent = titlePrefix + '　年間単元指導計画表';
   }
+  // 出力日を更新
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 出力`;
+  document.getElementById('print-date').textContent = dateStr;
 
   const table = document.getElementById('plan-table');
 
@@ -1546,8 +1555,8 @@ document.getElementById('btn-export-excel').addEventListener('click',()=>{
   const exTitleType = document.getElementById('title-type').value;
   const exClassNum = document.getElementById('class-select').value;
   const exPrefix = exTitleType === 'gakunen'
-    ? `令和7年度　第${grade}学年学年経営案`
-    : `令和7年度　第${grade}学年${exClassNum}組学級経営案`;
+    ? `2026年度　第${grade}学年学年経営案`
+    : `2026年度　第${grade}学年${exClassNum}組学級経営案`;
   const titleRow = [`${exPrefix}　年間単元指導計画表`];
   for(let i=0; i<subjects.length; i++) titleRow.push('');
   wsData.push(titleRow);
