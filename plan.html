@@ -536,6 +536,16 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
   <div class="cm-title">背景色の設定</div>
   <div class="cm-palette" id="cm-palette"></div>
   <button class="cm-clear" id="cm-clear">色をクリア</button>
+  <div style="border-top:1px solid #e2e8f0;margin-top:6px;padding-top:6px;">
+    <div class="cm-title">セル結合（右方向）</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+      <button class="cm-clear" id="cm-merge-2" style="width:auto;flex:1">2列</button>
+      <button class="cm-clear" id="cm-merge-3" style="width:auto;flex:1">3列</button>
+      <button class="cm-clear" id="cm-merge-4" style="width:auto;flex:1">4列</button>
+      <button class="cm-clear" id="cm-merge-5" style="width:auto;flex:1">5列</button>
+    </div>
+    <button class="cm-clear" id="cm-merge-clear">結合を解除</button>
+  </div>
 </div>
 
 <!-- ===== Modal (Cell Editor) ===== -->
@@ -602,7 +612,7 @@ function monthLabel(m){return MONTH_LABELS[MONTHS.indexOf(m)];}
 // ================================================================
 //  State
 // ================================================================
-let state = { grade:'5', units:{}, arrows:[], cellColors:{} };
+let state = { grade:'5', units:{}, arrows:[], cellColors:{}, mergedCells:{} };
 let uidCounter = 0;
 function uid(){return 'u'+(++uidCounter);}
 let aidCounter = 0;
@@ -618,6 +628,7 @@ function initGrade(grade){
   state.units = {};
   state.arrows = [];
   state.cellColors = {};
+  state.mergedCells = {};
   uidCounter = 0;
   aidCounter = 0;
   const gd = CURRICULUM_DATA[grade];
@@ -627,6 +638,35 @@ function initGrade(grade){
       const k = cellKey(subj, u.month);
       if(!state.units[k]) state.units[k]=[];
       state.units[k].push({ id:uid(), unit:u.unit, hours:u.hours });
+    }
+  }
+  // 道徳・特活の学期セル結合を自動設定
+  autoMergeDoutoku();
+}
+
+// 学期ごとの月範囲: [開始月index, 結合月数]
+const SEM_RANGES = [
+  {start:0, span:5},  // 1学期: 4,5,6,7,8月 (index 0-4)
+  {start:5, span:4},  // 2学期: 9,10,11,12月 (index 5-8)
+  {start:9, span:3},  // 3学期: 1,2,3月 (index 9-11)
+];
+
+function autoMergeDoutoku(){
+  const subj = '道徳・特活';
+  const gd = CURRICULUM_DATA[state.grade];
+  if(!gd || !gd[subj]) return;
+  // 道徳・特活でデータがある月を確認
+  const hasData = new Set();
+  for(const u of gd[subj]) hasData.add(u.month);
+  // 学期の開始月にのみデータがある場合、学期結合を設定
+  for(const sem of SEM_RANGES){
+    const semMonths = MONTHS.slice(sem.start, sem.start + sem.span);
+    const startMonth = semMonths[0];
+    const hasStart = hasData.has(startMonth);
+    const hasOther = semMonths.slice(1).some(m => hasData.has(m));
+    if(hasStart && !hasOther && sem.span > 1){
+      // 開始月のキーに結合情報を設定
+      state.mergedCells[cellKey(subj, startMonth)] = sem.span;
     }
   }
 }
@@ -749,26 +789,41 @@ function renderTable(){
     bhtml += `<tr>`;
     bhtml += `<td class="subj-cell${jikoSubjCls}" data-subj="${esc(subj)}">${esc(subj)}</td>`;
     let totalHrs = 0;
+    let skipUntil = -1;
     for(let mi=0;mi<MONTHS.length;mi++){
+      if(mi < skipUntil) continue; // 結合でスキップされるセル
       const m = MONTHS[mi];
-      const cls = semClass(m);
       const k = cellKey(subj, m);
-      let units = state.units[k]||[];
-      // Extract mode: filter units for non-JIKO rows
-      if(extractMode && subj!==JIKO){
-        units = units.filter(u=>extractVisibleUids.has(u.id));
+      const mergeSpan = state.mergedCells[k] || 0;
+      const cls = semClass(m);
+
+      // 結合セルの場合、結合範囲の全ユニットを集約
+      let allUnits = [];
+      const spanCount = mergeSpan > 1 ? mergeSpan : 1;
+      for(let s=0; s<spanCount; s++){
+        const sm = MONTHS[mi+s];
+        if(sm===undefined) break;
+        const sk = cellKey(subj, sm);
+        let units = state.units[sk]||[];
+        if(extractMode && subj!==JIKO){
+          units = units.filter(u=>extractVisibleUids.has(u.id));
+        }
+        allUnits = allUnits.concat(units);
       }
+
       let ch = '';
       let hrs = 0;
-      for(const u of units){
+      for(const u of allUnits){
         ch += `<div class="unit-item" data-uid="${u.id}" draggable="true">${esc(u.unit)}<span class="unit-hours">（${u.hours}）</span></div>`;
         hrs += u.hours;
       }
       totalHrs += hrs;
       const jikoCls = isJiko ? ' jiko-row' : '';
-      const bgColor = state.cellColors[cellKey(subj,m)] || '';
+      const bgColor = state.cellColors[k] || '';
       const bgStyle = bgColor ? ` style="background:${bgColor} !important"` : '';
-      bhtml += `<td class="data-cell ${cls}${jikoCls}" data-subj="${esc(subj)}" data-month="${m}"${bgStyle}>${ch}</td>`;
+      const colspan = mergeSpan > 1 ? ` colspan="${mergeSpan}"` : '';
+      bhtml += `<td class="data-cell ${cls}${jikoCls}" data-subj="${esc(subj)}" data-month="${m}"${bgStyle}${colspan}>${ch}</td>`;
+      if(mergeSpan > 1) skipUntil = mi + mergeSpan;
     }
     bhtml += `<td class="total-cell">${totalHrs}</td>`;
     bhtml += `</tr>`;
@@ -1403,6 +1458,24 @@ document.getElementById('cm-clear').addEventListener('click',()=>{
   renderTable();
 });
 
+// 手動セル結合
+[2,3,4,5].forEach(n=>{
+  document.getElementById('cm-merge-'+n).addEventListener('click',()=>{
+    if(!colorTarget) return;
+    const mi = MONTHS.indexOf(colorTarget.month);
+    if(mi < 0 || mi + n > MONTHS.length) { alert('結合範囲が月を超えます'); return; }
+    state.mergedCells[cellKey(colorTarget.subj, colorTarget.month)] = n;
+    closeColorMenu();
+    renderTable();
+  });
+});
+document.getElementById('cm-merge-clear').addEventListener('click',()=>{
+  if(!colorTarget) return;
+  delete state.mergedCells[cellKey(colorTarget.subj, colorTarget.month)];
+  closeColorMenu();
+  renderTable();
+});
+
 function closeColorMenu(){ colorMenu.classList.remove('open'); colorTarget=null; }
 document.addEventListener('click',(e)=>{
   if(!colorMenu.contains(e.target)) closeColorMenu();
@@ -1479,7 +1552,8 @@ document.getElementById('btn-save').addEventListener('click',()=>{
     headerInfo: getHeaderData(),
     units: state.units,
     arrows: state.arrows,
-    cellColors: state.cellColors
+    cellColors: state.cellColors,
+    mergedCells: state.mergedCells
   };
   const json = JSON.stringify(saveData, null, 2);
   const blob = new Blob([json], {type:'application/json'});
@@ -1511,6 +1585,7 @@ document.getElementById('btn-load').addEventListener('click',()=>{
         state.units  = data.units;
         state.arrows = data.arrows || [];
         state.cellColors = data.cellColors || {};
+        state.mergedCells = data.mergedCells || {};
         gradeSelect.value = state.grade;
         if(data.jikoPos) document.getElementById('jiko-pos').value = data.jikoPos;
         if(data.titleType){
