@@ -378,11 +378,6 @@ td.subj-cell.jiko-subj{background:#e65100 !important;color:#fff !important;}
   body.arrow-mode{/* reset */}
   #toolbar,#modal-overlay,#subj-overlay,#arrow-banner,#color-menu{display:none !important;}
 
-  /* 印刷用コンテナ（JSでスケール適用） */
-  #print-area{
-    transform-origin:top left;
-  }
-
   /* タイトル */
   #title-bar{border:none;padding:4px 0 3px;font-size:16px;margin:0;}
   #print-date{font-size:9px !important;color:#333 !important;}
@@ -1951,26 +1946,18 @@ ${bodyHtml}
 // ================================================================
 window.addEventListener('beforeprint',()=>{
   const area = document.getElementById('print-area');
-  // A3横の印刷可能領域（margin:4mm, A3=420x297mm）
-  const pageW = 412; // mm
-  const pageH = 289; // mm
-  // mm→pxの変換(96dpi: 1mm=3.7795px)
-  const pxPerMm = 3.7795;
-  const maxW = pageW * pxPerMm;
-  const maxH = pageH * pxPerMm;
-  // コンテンツの実サイズを取得
-  area.style.transform = 'none';
-  const rect = area.getBoundingClientRect();
-  const scaleX = maxW / rect.width;
-  const scaleY = maxH / rect.height;
-  const scale = Math.min(scaleX, scaleY, 1); // 1以上にはしない
-  area.style.transform = `scale(${scale})`;
-  area.style.width = (100 / scale) + '%';
+  // zoomをリセットして実サイズを測定
+  area.style.zoom = '1';
+  const contentH = area.scrollHeight;
+  // A3横の印刷可能高さ（margin:4mm, 297mm - 8mm = 289mm, 96dpi: 1mm≈3.78px）
+  const pageH = 289 * 3.78;
+  if(contentH > pageH){
+    const z = pageH / contentH;
+    area.style.zoom = String(Math.floor(z * 100) / 100);
+  }
 });
 window.addEventListener('afterprint',()=>{
-  const area = document.getElementById('print-area');
-  area.style.transform = '';
-  area.style.width = '';
+  document.getElementById('print-area').style.zoom = '';
 });
 
 // ================================================================
